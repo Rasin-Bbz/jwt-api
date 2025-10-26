@@ -69,7 +69,7 @@ def process_token(uid, password):
     """
     Get token data and use it to build, serialize, encrypt, and send game data via protocol buffers.
     """
-    start_time = time.time()  # start timer
+    start_time = time.time() 
 
     token_data = get_token(password, uid)
     if not token_data:
@@ -149,7 +149,7 @@ def process_token(uid, password):
 
     try:
         response = requests.post(url, data=edata, headers=headers, verify=False)
-        elapsed_time = round(time.time() - start_time, 3)  # ⏱️ total time in seconds
+        elapsed_time = round(time.time() - start_time, 3) 
 
         if response.status_code == 200:
             example_msg = output_pb2.Garena_420()
