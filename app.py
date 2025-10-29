@@ -310,17 +310,17 @@ def home():
             const resultBox = document.getElementById('resultBox');
             const errorBox = document.getElementById('errorBox');
 
-            // Clear previous states
+  
             resultBox.classList.add('hidden');
             errorBox.classList.add('hidden');
 
-            // Validation
+ 
             if (!uid || !password) {
                 showError('Please enter both UID and Password');
                 return;
             }
 
-            // Show loading
+
             submitBtn.disabled = true;
             loading.classList.remove('hidden');
 
@@ -410,14 +410,10 @@ def home():
             errorBox.classList.remove('hidden');
         }
 
-        // Allow Enter key to submit
         document.getElementById('password').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') getToken();
         });
 
-        // Pre-populate for testing (remove later)
-        // document.getElementById('uid').value = '4199274871';
-        // document.getElementById('password').value = 'ACA03CF93B5FD2909D1E2BEAFB155FBA3E808BADDB6FAC047CDE7AF4D8A19936';
     </script>
 </body>
 </html>'''
