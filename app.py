@@ -68,6 +68,7 @@ def parse_response(response_content):
 def process_token(uid, password):
     """
     Get token data and use it to build, serialize, encrypt, and send game data via protocol buffers.
+    OB51 compatible version with new fields.
     """
     start_time = time.time() 
 
@@ -99,6 +100,14 @@ def process_token(uid, password):
     game_data.platform_type = 4
     game_data.device_form_factor = "Handheld"
     game_data.device_model = "Asus ASUS_I005DA"
+    
+    # OB51 New Fields
+    game_data.unknown_field_30 = 0
+    game_data.secondary_network_provider = "Verizon Wireless"
+    game_data.secondary_connection_type = "WIFI"
+    game_data.unique_id = "74b585a9-0268-4ad3-8f36-ef41d2e53610"
+    
+    # Legacy Fields
     game_data.field_60 = 32968
     game_data.field_61 = 29815
     game_data.field_62 = 2479
@@ -148,7 +157,7 @@ def process_token(uid, password):
     edata = bytes.fromhex(hex_encrypted_data)
 
     try:
-        response = requests.post(url, data=edata, headers=headers, verify=False)
+        response = requests.post(url, data=edata, headers=headers, verify=False, timeout=10)
         elapsed_time = round(time.time() - start_time, 3) 
 
         if response.status_code == 200:
@@ -164,13 +173,13 @@ def process_token(uid, password):
                     "Time": f"{elapsed_time} seconds"
                 }
             except Exception as e:
-                return {"error": f"Failed to deserialize response: {e}", "Time": f"{elapsed_time} seconds"}
+                return {"error": f"Failed to deserialize response: {str(e)}", "Time": f"{elapsed_time} seconds"}
         else:
-            return {"error": f"HTTP {response.status_code} - {response.reason}", "Time": f"{elapsed_time} seconds"}
+            return {"error": f"HTTP {response.status_code} - {response.reason}", "response": response.text[:200], "Time": f"{elapsed_time} seconds"}
 
     except requests.RequestException as e:
         elapsed_time = round(time.time() - start_time, 3)
-        return {"error": f"Request error: {e}", "Time": f"{elapsed_time} seconds"}
+        return {"error": f"Request error: {str(e)}", "Time": f"{elapsed_time} seconds"}
 
 @app.route('/token', methods=['GET'])
 def get_token_response():
@@ -201,6 +210,11 @@ def get_token_response():
     response.headers["Content-Type"] = "application/json"
     return response
 
+@app.route('/health', methods=['GET'])
+def health():
+    """Health check endpoint"""
+    return jsonify({"status": "OK", "version": "OB51"}), 200
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=False)
