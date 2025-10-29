@@ -2,7 +2,7 @@ import sys
 import time
 sys.path.append("/")
 
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, jsonify, request, make_response, render_template
 import requests
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
@@ -214,6 +214,213 @@ def get_token_response():
 def health():
     """Health check endpoint"""
     return jsonify({"status": "OK", "version": "OB51"}), 200
+
+@app.route('/', methods=['GET'])
+def home():
+    """Serve the HTML frontend"""
+    return '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token API Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-pink-900 via-purple-900 to-indigo-900 min-h-screen">
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-300 to-purple-300 mb-2">
+                    Token API
+                </h1>
+                <p class="text-gray-300 text-sm">OB51 Protocol Buffer Gateway</p>
+            </div>
+
+            <!-- Main Card -->
+            <div class="backdrop-blur-xl bg-white/10 border border-pink-400/20 rounded-2xl p-8 shadow-2xl">
+                
+                <!-- Input Fields -->
+                <div class="space-y-4 mb-6">
+                    <!-- UID Input -->
+                    <div>
+                        <label class="block text-pink-200 text-sm font-medium mb-2">User ID</label>
+                        <input 
+                            type="text" 
+                            id="uid" 
+                            placeholder="Enter your UID"
+                            class="w-full px-4 py-3 bg-white/5 border border-pink-300/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-pink-400/60 focus:bg-white/10 transition"
+                        >
+                    </div>
+
+                    <!-- Password Input -->
+                    <div>
+                        <label class="block text-pink-200 text-sm font-medium mb-2">Password</label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            placeholder="Enter your password"
+                            class="w-full px-4 py-3 bg-white/5 border border-pink-300/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-pink-400/60 focus:bg-white/10 transition"
+                        >
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button 
+                    onclick="getToken()"
+                    id="submitBtn"
+                    class="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-semibold py-3 rounded-lg transition transform hover:scale-105 active:scale-95 mb-6"
+                >
+                    Get Token
+                </button>
+
+                <!-- Loading State -->
+                <div id="loading" class="hidden text-center mb-6">
+                    <div class="flex justify-center mb-2">
+                        <div class="animate-spin rounded-full h-6 w-6 border-2 border-pink-400 border-t-purple-400"></div>
+                    </div>
+                    <p class="text-gray-300 text-sm">Processing...</p>
+                </div>
+
+                <!-- Result Box -->
+                <div id="resultBox" class="hidden bg-white/5 border border-purple-400/30 rounded-lg p-4">
+                    <div id="resultContent" class="space-y-3 text-sm"></div>
+                </div>
+
+                <!-- Error Box -->
+                <div id="errorBox" class="hidden bg-red-500/10 border border-red-400/50 rounded-lg p-4 mb-4">
+                    <p id="errorText" class="text-red-300 text-sm"></p>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="text-center mt-6 text-gray-400 text-xs">
+                <p>Secure Protocol Buffer Encryption • AES-256-CBC</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function getToken() {
+            const uid = document.getElementById('uid').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const resultBox = document.getElementById('resultBox');
+            const errorBox = document.getElementById('errorBox');
+
+            // Clear previous states
+            resultBox.classList.add('hidden');
+            errorBox.classList.add('hidden');
+
+            // Validation
+            if (!uid || !password) {
+                showError('Please enter both UID and Password');
+                return;
+            }
+
+            // Show loading
+            submitBtn.disabled = true;
+            loading.classList.remove('hidden');
+
+            try {
+                const response = await axios.get('/token', {
+                    params: { uid, password },
+                    timeout: 15000
+                });
+
+                const data = response.data;
+                console.log('Response data:', data);
+
+                if (data && typeof data === 'object') {
+                    if (data.error) {
+                        showError(data.error);
+                    } else {
+                        displayResult(data);
+                    }
+                } else {
+                    showError('Invalid response format');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                if (error.response) {
+                    const errData = error.response.data;
+                    showError(errData?.error || errData?.message || 'Server error occurred');
+                } else if (error.code === 'ECONNABORTED') {
+                    showError('Request timeout - server not responding');
+                } else {
+                    showError('Network error - ' + (error.message || 'unable to connect'));
+                }
+            } finally {
+                submitBtn.disabled = false;
+                loading.classList.add('hidden');
+            }
+        }
+
+        function displayResult(data) {
+            const resultBox = document.getElementById('resultBox');
+            const resultContent = document.getElementById('resultContent');
+            
+            let html = '';
+            
+            const fields = [
+                { key: 'status', label: 'Status', icon: '●' },
+                { key: 'token', label: 'Token', icon: '🔐' },
+                { key: 'api', label: 'API Server', icon: '🌐' },
+                { key: 'region', label: 'Region', icon: '🗺️' },
+                { key: 'developer', label: 'Developer', icon: '👨‍💻' },
+                { key: 'Time', label: 'Response Time', icon: '⏱️' }
+            ];
+
+            fields.forEach(field => {
+                const value = data[field.key];
+                if (value !== undefined && value !== null && value !== '') {
+                    let displayValue = String(value);
+                    
+                    if (field.key === 'token' && displayValue.length > 30) {
+                        displayValue = displayValue.substring(0, 30) + '...';
+                    }
+                    
+                    const statusColor = field.key === 'status' && displayValue === 'live' 
+                        ? 'text-green-300' 
+                        : 'text-gray-300';
+                    
+                    html += `
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">${field.icon} ${field.label}</span>
+                            <span class="${statusColor} font-mono text-right break-all">${displayValue}</span>
+                        </div>
+                    `;
+                }
+            });
+
+            if (html === '') {
+                html = '<p class="text-gray-400">No data received</p>';
+            }
+
+            resultContent.innerHTML = html;
+            resultBox.classList.remove('hidden');
+        }
+
+        function showError(message) {
+            const errorBox = document.getElementById('errorBox');
+            const errorText = document.getElementById('errorText');
+            errorText.textContent = message;
+            errorBox.classList.remove('hidden');
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('password').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') getToken();
+        });
+
+        // Pre-populate for testing (remove later)
+        // document.getElementById('uid').value = '4199274871';
+        // document.getElementById('password').value = 'ACA03CF93B5FD2909D1E2BEAFB155FBA3E808BADDB6FAC047CDE7AF4D8A19936';
+    </script>
+</body>
+</html>'''
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
